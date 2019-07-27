@@ -69,7 +69,6 @@ def zedDistance(clientID, zed1, zed0):
         return None
     x0, y0 = pos0
     x1, y1 = pos1
-    print("pos0", pos0, "pos1", pos1)
     x_l = x1 - P_x / 2
     x_r = x0 - P_x / 2
     y_p = P_y / 2 - (y0)

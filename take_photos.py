@@ -68,9 +68,9 @@ def main():
         for i in range(len(move_points)):
             print("move_points:", move_points)
             if count == 0:
-                flight_controller.moveTo(np.array(move_points[i]), 0, 1, True)
+                flight_controller.moveTo(np.array(move_points[i]), 0, 0, True)
             else:
-                flight_controller.moveTo(np.array(move_points[i]), 1, 1, False)
+                flight_controller.moveTo(np.array(move_points[i]), 1, 0, False)
             flight_controller.clear_cumul()
             result = flight_controller.step_forward_move()
             while result['flag']:
@@ -91,7 +91,7 @@ def main():
                         f.write('photo num: ' + str(photo_num) + ' zed0 position: ' + str(zed_position_0) + ' orientation: ' + str(zed_orientation_0) + ' zed1 position: ' + str(zed_position_1) + ' orientation: ' + str(zed_orientation_1) + '\n')
                     pos_new = zedDistance(clientID, result['photos'][1], result['photos'][0])
                     if pos_new is not None and (pos is None or (pos_new[0] > pos[0] and pos_new[0]-pos[0]<0.6)):
-                        speed = pos_now - pos
+                        speed = pos_new - pos
                         pos = pos_new
                         pos[2] = 0.5
                         flight_controller.moveTo(np.array(pos), 1, 1, True)
