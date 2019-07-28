@@ -4,9 +4,7 @@ import math
 import vrep
 from .api import *
 
-
-assist_object_handle = None
-
+initialized = False
 def left_transformation(dimension_array, transplant, x, y, z):
     alpha, beta, gama = dimension_array
     src_coordinates = np.array([x, y, z])
@@ -30,9 +28,11 @@ def left_transformation(dimension_array, transplant, x, y, z):
 
 def trivial_transformation(clientID, x, y, z):
     relative_pos = [x, y, z]
-    global assist_object_handle
-    if assist_object_handle is None:
+    assist_object_handle = None
+    global initialized
+    if initialized == False:
         _, assist_object_handle = vrep.simxCreateDummy(clientID, 0, None, vrep.simx_opmode_blocking)
+        initialized = True
     opcode, left_zed = vrep.simxGetObjectHandle(clientID, "zed_vision1#", vrep.simx_opmode_blocking)
     vrep.simxSetObjectPosition(clientID, assist_object_handle, left_zed, relative_pos, vrep.simx_opmode_blocking)
     opcode, absolute_pos = vrep.simxGetObjectPosition(clientID, assist_object_handle, -1, vrep.simx_opmode_blocking)
