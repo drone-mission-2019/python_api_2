@@ -41,6 +41,32 @@ def trivial_transformation(clientID, x, y, z):
 def toRadians(args):
     return math.radians(args)
 
+def reprojectionTo3D(cliendID, zed1, zed0):
+    B = 0.12
+    P_x = 1280.0
+    P_y = 720.0
+    alpha = 85.0
+    beta = 54.0
+
+    x_l = 0.0
+    x_r = 0.0
+    y_p = 0.0
+
+    x0, y0 = zed0
+    x1, y1 = zed1
+    x_l = x1 - P_x / 2
+    x_r = x0 - P_x / 2
+    y_p = P_y / 2 - (y0)
+
+    alpha_rad = toRadians(alpha)
+    beta_rad = toRadians(beta)
+    if x_l == x_r:
+        x_l += 1
+    x = (B * x_l) / (x_l - x_r)
+    y = (B * P_x * math.tan(beta_rad / 2) * y_p) / ((x_l - x_r) * P_y * math.tan(alpha_rad / 2))
+    z = (B * P_x / 2) / ((x_l - x_r) * math.tan(alpha_rad / 2))
+    return trivial_transformation(clientID, -x, -y, z)
+
 def zedDistance(clientID, zed1, zed0):
     """
     给出图像给定位置, 返回任务一中二维码的中心位置

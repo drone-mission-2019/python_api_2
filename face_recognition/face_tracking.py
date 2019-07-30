@@ -5,6 +5,8 @@ from skimage.measure import compare_ssim
 import dlib
 import sys
 import os
+import math
+#from runnable.distance_metric import *
 
 person1 = cv2.imread('../pictures/face_1.png')
 person2 = cv2.imread('../pictures/face_2.png')
@@ -19,11 +21,18 @@ def display_image(img):
     cv2.waitKey (0)
     cv2.destroyAllWindows()
 
+def rotate_image_reverse(coordinate, M):
+    A = M[:, 0:2]
+    B = M[:, 2]
+    coordinate -= B
+    A_inv = np.linalg.inv(A)
+    return np.dot(A_inv, np.transpose(coordinate))
+
 def rotate_image(img, angle):
     # grab the dimensions of the image and then determine the
     # center
     (h, w) = img.shape[:2]
-    (cX, cY) = (w // 2, h // 2)
+    (cX, cY) = (w // 2, h // 2) 
 
     # grab the rotation matrix (applying the negative of the
     # angle to rotate clockwise), then grab the sine and cosine
@@ -42,7 +51,7 @@ def rotate_image(img, angle):
 
     # perform the actual rotation and return the image
     rotated = cv2.warpAffine(img, M, (nW, nH))
-    return rotated
+    return rotated, M
 
 def resize_image(img, w, h):
     return cv2.resize(img, (w, h), interpolation=cv2.INTER_CUBIC)
@@ -72,14 +81,12 @@ def face_detector_dlib(img):
     dets = detector(img, 1)
     return dets
 
-def face_selector(p, file):
-    path = p + file
-    img = cv2.imread(path)
+def face_selector(img):
     checkin = False
     angles = 30
     while True:
         angles -= 30
-        processed_img = rotate_image(img, angles)
+        processed_img, M = rotate_image(img, angles)
         # faces = face_detector_dlib(processed_img)
         # for index, face in enumerate(faces):
         #     checkin = True
@@ -91,41 +98,63 @@ def face_selector(p, file):
         faces = face_detector_opencv(processed_img)
         for (x, y, w, h) in faces:
             checkin = True
-            cv2.rectangle(processed_img, (x, y), (x+w, y+h), (0, 255, 0))
+            # cv2.rectangle(processed_img, (x, y), (x+w, y+h), (0, 255, 0))
         if checkin == True or angles <= -360:
             break
 
     if checkin == True:
-        print(file)
-        print(faces)
-        cv2.imwrite('../pictures/exists_face/' + file, processed_img)
-        return faces
+        return faces, angles, processed_img, M
     else:
-        print(file)
-        return [[0, 0, 0, 0]]
+        return None
 
-def find_peopleID(img):
-    pass
+def find_peopleID(clientID, zed1, zed0, id):
+    """
+    给出当前拍摄到的图像，和所给的id进行匹配，检测是否是当前的人脸
+    :param zed1: 无人机相机左目视觉
+    :param zed0: 无人机相机右目视觉
+    :type  ndarrays
+    :param id: 目标任务的id
+    :type  int
+
+    :return: 人脸的位置，相当于世界坐标系
+    :rtype: [x, y, z] with respect to the world
+            return None for no faces in the picture
+    """
+    faces1, angles1, processed_img1, M1 = face_selector(zed1)
+    faces0, angles0, processed_img0, M0 = face_selector(zed0)
+    people = []
+    max_sim = -1
+    max_id = -1
+    if faces1 is None or faces0 is None:
+        return None
+    else:
+        for i in range(0, min(len(faces1), len(faces0))):
+            x, y, w, h = faces1[i]
+            x0, y0, w0, h0 = faces0[i]
+            print(faces0)
+            print(faces1)
+            face1 = processed_img1[y:y+h, x:x+w, :]
+            #face0 = processed_img0[y:y+h, x:x+w, :]
+            people.append(resize_image(person1, w, h))
+            people.append(resize_image(person2, w, h))
+            people.append(resize_image(person3, w, h))
+            people.append(resize_image(person4, w, h))
+            people.append(resize_image(person5, w, h))
+            people.append(resize_image(person6, w, h))
+            for j in range(0, len(people)):
+                sim = compare_ssim(face1, people[j], multichannel=True)
+                if sim > max_sim:
+                    max_sim = sim
+                    max_id = j + 1
+            print(max_id)
+            if max_id == id:
+                coord1 = rotate_image_reverse([x+w/2, y+h/2], M1)
+                coord0 = rotate_image_reverse([x0+w0/2, y0+h0/2], M0)
+                return reprojectionTo3D(clientID, coord1, coord0)
+    return None
 
 if __name__ == '__main__':
-    img = cv2.imread('../pictures/face_2.png')
-    people_2 = cv2.imread('../pictures/people2.jpeg')
-    people_5 = cv2.imread('../pictures/people_5.jpeg')
-    faces = face_selector('../pictures/', 'people2.jpeg')
-
-    x, y, w, h = faces[0]
-    face_2 = resize_image(img, w, h)
-    people_2 = people_2[y:y+h, x:x+w, :]
-    cv2.imwrite('../pictures/batch_2.jpg', people_2)
-    ssim = compare_ssim(face_2, people_2, multichannel=True)
-
-    faces = face_selector('../pictures/', 'people_5.jpeg')
-    x, y, w, h = faces[0]
-    face_2 = resize_image(img, w, h)
-    people_5 = people_5[y:y+h, x:x+w, :]
-    cv2.imwrite('../pictures/batch_5.jpg', people_5)
-    ssim0 = compare_ssim(face_2, people_5, multichannel=True)
-    
-    print(ssim)
-    print(ssim0)
+    zed1 = cv2.imread('../pictures/people2.jpeg')
+    find_peopleID(0, zed1, zed1, 2)
+    display_image(zed1)
 
